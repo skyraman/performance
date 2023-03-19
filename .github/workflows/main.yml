@@ -23,56 +23,13 @@ jobs:
           pip install mkdocs
 
       - name: Build MkDocs site
-        run: mkdocs build
+        run: mkdocs build --site-dir site
 
-      - name: Deploy to GitHub Pages
-        uses: actions/github-script@v3
+      - name: Deploy to /docs folder
+        uses: peaceiris/actions-gh-pages@v3
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const fs = require('fs');
-            const path = require('path');
-            const glob = require('glob');
-            const mime = require('mime');
-            const gh = require('@octokit/request');
-
-            const getAllFiles = function (dirPath, arrayOfFiles) {
-              const files = fs.readdirSync(dirPath);
-              arrayOfFiles = arrayOfFiles || [];
-
-              files.forEach(function (file) {
-                if (fs.statSync(dirPath + '/' + file).isDirectory()) {
-                  arrayOfFiles = getAllFiles(dirPath + '/' + file, arrayOfFiles);
-                } else {
-                  arrayOfFiles.push(path.join(dirPath, '/', file));
-                }
-              });
-
-              return arrayOfFiles;
-            };
-
-            const publishFiles = async function (files) {
-              for (const file of files) {
-                const content = fs.readFileSync(file);
-                const contentType = mime.getType(file);
-                const filePath = file.replace('site/', 'docs/');
-                const url = `https://api.github.com/repos/${context.repo.owner}/${context.repo.repo}/contents/${filePath}`;
-
-                try {
-                  await gh.request('PUT ' + url, {
-                    headers: {
-                      authorization: `token ${process.env.GITHUB_TOKEN}`,
-                      'content-type': contentType,
-                    },
-                    message: `Update ${filePath}`,
-                    content: content.toString('base64'),
-                    branch: context.ref.replace('refs/heads/', ''),
-                  });
-                } catch (error) {
-                  console.log(`Failed to publish ${filePath}: `, error.message);
-                }
-              }
-            };
-
-            const files = getAllFiles('site');
-            publishFiles(files);
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: main
+          publish_dir: site
+          destination_dir: docs
+          force_orphan: true
